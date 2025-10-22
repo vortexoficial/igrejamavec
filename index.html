@@ -1,0 +1,365 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Viver em Santos & Região</title>
+
+  <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;700&display=swap" rel="stylesheet">
+  <link rel="icon" href="img/favicon.png" type="image/png">
+
+  <style>
+    /* ===================== BASE / CORES ===================== */
+    .frase{ border-radius:5%; border-color:#3b3b3b; }
+    :root{
+      --logo-size:210px;
+      --bar-extra:40px;
+      --bar-height:6px;
+      --bar-color:#1c4a40;
+      --accent:#1c4a40;
+      --accent-soft-2:#1c4a40;
+      --banners-maxw:640px;
+    }
+
+    *{ box-sizing:border-box; margin:0; padding:0; }
+    body{
+      background:linear-gradient(135deg,#181818 0%,#1d1d1d 50%,#1a1a1a 100%);
+      font-family:"Montserrat",sans-serif;
+    }
+
+    /* ===================== LOADER ===================== */
+    /* Em vez de esconder a página com display:none, deixamos o #page invisível e já renderizado */
+    .loader-wrapper{
+      position:fixed; inset:0;
+      background:linear-gradient(135deg,#1c4a40 0%,#2a6a57 50%,#1c4a40 100%);
+      z-index:9999;
+      animation:loader-fade-out .5s ease-out 6.0s forwards;
+    }
+    .loader-wrapper.hidden{ display:none; }
+
+    .loader-phase{
+      position:absolute; inset:0;
+      display:flex; flex-direction:column; justify-content:center; align-items:center;
+    }
+    #loader-phase-1{ opacity:1; animation:element-fade-out .5s ease-out 3.0s forwards; }
+    .loader-logo{ width:150px; margin-bottom:25px; opacity:0; animation:logo-fade-in 1s ease-out .2s forwards; }
+    .loading-bar-container{ width:200px; height:4px; background:#2a6a57; border-radius:2px; opacity:0; animation:loading-bar-fade-in .5s ease-out .8s forwards; }
+    .loading-bar{ width:0%; height:100%; background:#ecfcc2; animation:fill-loading-bar 2.0s ease-out 1.0s forwards; }
+    .loader-text-phase1{ font-weight:300; font-size:.7rem; color:#ecfcc2; text-transform:uppercase; letter-spacing:3px; margin-top:15px; opacity:0; animation:text-fade-in .5s ease-out .8s forwards; }
+
+    #loader-phase-2{ opacity:0; animation:element-fade-in .5s ease-out 3.5s forwards, element-fade-out .5s ease-out 5.5s forwards; }
+    .loader-image-top{ max-width:80%; margin-bottom:25px; opacity:0; transform:scale(.9); animation:fade-scale-in 1.5s ease-out .5s forwards; }
+    .loader-text-bottom{ font-weight:300; font-size:1rem; color:#ecfcc2; text-transform:uppercase; letter-spacing:4px; opacity:0; animation:text-fade-in 1s ease-out 1s forwards; }
+
+    @keyframes logo-fade-in{ from{opacity:0; transform:scale(.9)} to{opacity:1; transform:scale(1)} }
+    @keyframes loading-bar-fade-in{ to{opacity:1} }
+    @keyframes fill-loading-bar{ from{width:0%} to{width:100%} }
+    @keyframes fade-scale-in{ from{opacity:0; transform:scale(.9)} to{opacity:1; transform:scale(1)} }
+    @keyframes text-fade-in{ from{opacity:0} to{opacity:1} }
+    @keyframes element-fade-in{ from{opacity:0} to{opacity:1} }
+    @keyframes element-fade-out{ from{opacity:1} to{opacity:0} }
+    @keyframes loader-fade-out{ from{opacity:1} to{opacity:0} }
+
+    /* ===================== REVEAL SUAVE DA PÁGINA ===================== */
+    /* A página fica pronta por trás do loader, mas invisível */
+    #page{
+      opacity:0;
+      visibility:hidden;
+      transform:translateY(6px);
+      filter:saturate(.98);
+      transition:
+        opacity .45s ease-out,
+        transform .45s ease-out,
+        filter .45s ease-out,
+        visibility 0s linear .45s; /* torna visível ao finalizar */
+    }
+    body.revealing #page{
+      visibility:visible;
+      opacity:1;
+      transform:none;
+      filter:none;
+      transition:
+        opacity .45s ease-out,
+        transform .45s ease-out,
+        filter .45s ease-out,
+        visibility 0s;
+    }
+
+    /* Respeita acessibilidade */
+    @media (prefers-reduced-motion: reduce){
+      .loader-wrapper{ animation:none !important; }
+      #page{ transition:none !important; opacity:1 !important; visibility:visible !important; transform:none !important; }
+    }
+
+    /* ===================== HERO / LOGO ===================== */
+    .hero{ padding:18px 16px 0; text-align:center; }
+    .logo-container .logo{ width:150px; height:auto; }
+    .social-icons{ display:flex; gap:14px; justify-content:center; align-items:center; margin:10px 0 6px; }
+    .social-icons img{ width:26px; height:26px; display:block; }
+    .arrow{ margin-top:6px; }
+
+    /* ===================== BANNERS FIXOS ===================== */
+    .banners{ padding:0 12px 16px; }
+    .banners a img{
+      display:block; width:100%; height:auto; margin-bottom:10px; border-radius:18px;
+      transition:transform .4s ease, filter .4s ease;
+    }
+    .banners a:hover img{ transform:scale(1.04); filter:brightness(1.18) saturate(1.1); }
+
+    @media (min-width:769px){
+      .banners{ max-width:var(--banners-maxw); margin:0 auto 24px; padding:0; }
+      .banners a img{ margin-bottom:14px; border-radius:18px; }
+    }
+
+    /* ===================== CARROSSEL DO TOPO ===================== */
+    .top-carousel{ padding:0; }
+    .tc-viewport{
+      position:relative;
+      max-width:980px;
+      margin:0 auto 18px;
+      overflow:hidden;
+      border-radius:0 0 22px 22px;
+      box-shadow:0 8px 24px rgba(0,0,0,.12);
+      isolation:isolate;
+      background:#000; /* evita flashes entre imagens */
+    }
+    .tc-track{
+      display:flex; will-change:transform; transform:translateX(0);
+    }
+    .tc-slide{
+      flex:0 0 100%;
+      width:100%;
+      user-select:none;
+      overflow:hidden;
+      background:#000;
+    }
+    .tc-slide img{
+      display:block; width:100%;
+      height:48vw; max-height:460px; min-height:200px;
+      object-fit:cover;
+      border-radius:0 !important;
+    }
+
+    .tc-nav{
+      position:absolute; top:50%; transform:translateY(-50%);
+      width:38px; height:38px; border-radius:999px; border:none;
+      background:rgba(0,0,0,.55); color:#fff; font-size:22px; line-height:38px; cursor:pointer;
+      display:grid; place-items:center; backdrop-filter:blur(2px);
+    }
+    .tc-prev{ left:10px; } .tc-next{ right:10px; }
+    .tc-nav:hover{ background:rgba(0,0,0,.7); }
+
+    .tc-dots{
+      position:absolute; left:50%; bottom:10px; transform:translateX(-50%);
+      display:flex; gap:5px; padding:4px 6px;
+      background:rgba(0,0,0,.25); border-radius:999px; backdrop-filter:blur(4px);
+    }
+    .tc-dot{ width:6px; height:6px; border-radius:50%; border:0; background:rgba(255,255,255,.55); cursor:pointer; }
+    .tc-dot.active{ background:#fff; }
+
+    @media (hover:none){ .tc-nav{ display:none; } }
+
+    @media (max-width:768px){
+      .top-carousel{ padding:0 12px; }
+      .tc-viewport{ border-radius:0 0 22px 22px; }
+      .tc-slide img{ border-radius:0 !important; }
+    }
+
+    /* ===================== RODAPÉ ===================== */
+    footer{ text-align:center; padding:6px 12px 14px; color:#ecfcc2; }
+    .credit-bar{
+      width:100%; text-align:center; background:#1a1a1a; padding:10px 0 14px; font-size:.9rem; color:#ffe5c7; letter-spacing:.3px;
+      border-top:1px solid rgba(255,255,255,.05);
+    }
+    .credit-bar a{ color:var(--accent); font-weight:700; text-decoration:none; margin-left:4px; transition:color .2s ease, opacity .2s ease; }
+    .credit-bar a:hover{ color:var(--accent-soft-2); opacity:.85; }
+
+    /* ===== Scrollbar ===== */
+    ::-webkit-scrollbar{ width:6px; height:6px; }
+    ::-webkit-scrollbar-track{ background:#f4f4f4; border-radius:10px; }
+    ::-webkit-scrollbar-thumb{ background:#aedbae; border-radius:10px; transition:background .3s ease; }
+    ::-webkit-scrollbar-thumb:hover{ background:#aedbae; }
+    *{ scrollbar-width:thin; scrollbar-color:#aedbae #f4f4f4; }
+    html{ -webkit-overflow-scrolling:touch; scrollbar-color:#aedbae #f4f4f4; }
+
+    /* ===== Animação de clique nos banners ===== */
+    @keyframes bannerClickFlash{
+      0%{ filter:brightness(1); transform:scale(1); }
+      40%{ filter:brightness(1.8); transform:scale(1.06); }
+      100%{ filter:brightness(1); transform:scale(1.04); }
+    }
+    .banners a img.click-anim{ animation:bannerClickFlash .6s ease forwards; }
+
+    /* Estilizando todos os <h3> (mantido do seu código) */
+    h3 { font-weight:normal; }
+    .h3-fino { font-weight:lighter; color:blue; }
+    .h3-normal { font-weight:normal; color:green; }
+  </style>
+</head>
+
+<body>
+  <!-- LOADER -->
+  <div class="loader-wrapper" id="loader">
+    <div class="loader-phase" id="loader-phase-1">
+      <img src="img/logo.png" alt="Logo Mavec" class="loader-logo">
+      <div class="loading-bar-container"><div class="loading-bar"></div></div>
+      <p class="loader-text-phase1">Carregando...</p>
+    </div>
+    <div class="loader-phase" id="loader-phase-2">
+      <img src="img/14anos.png" alt="14 Anos Mavec" class="loader-image-top">
+      <div class="loader-text-bottom">VIVER EM CRISTO</div>
+    </div>
+  </div>
+
+  <!-- PÁGINA (fica renderizada por trás do loader) -->
+  <div id="page">
+    <!-- CARROSSEL -->
+    <section class="top-carousel">
+      <div class="tc-viewport">
+        <div class="tc-track">
+          <a class="tc-slide" href="" target="_blank">
+            <img id="bannertopo1" src="img/bannertopo1.jpg" alt="Banner Topo 1" />
+          </a>
+          <a class="tc-slide" href="">
+            <img id="bannertopo2" src="img/bannertopo2.jpg" alt="Banner Topo 2" />
+          </a>
+          <a class="tc-slide" href="">
+            <img id="bannertopo3" src="img/bannertopo3.jpg" alt="Banner Topo 3" />
+          </a>
+        </div>
+        <button class="tc-nav tc-prev" aria-label="Anterior">‹</button>
+        <button class="tc-nav tc-next" aria-label="Próximo">›</button>
+        <div class="tc-dots">
+          <button class="tc-dot active"></button>
+          <button class="tc-dot"></button>
+          <button class="tc-dot"></button>
+        </div>
+      </div>
+    </section>
+
+    <!-- HERO -->
+    <div class="hero">
+      <div class="logo-container">
+        <img src="img/logo.png" alt="Logo" class="logo" />
+        <br><br>
+        <div class="arrow"><font size="3" color="#ecfcc2">Clique e acesse ↓</font></div>
+      </div>
+    </div>
+    <br>
+
+    <!-- BANNERS -->
+    <div class="banners">
+      <a href=""><img src="img/banner1.png" alt="Banner 1" /></a>
+      <a href=""><img src="img/banner22.png" alt="Banner 2" /></a>
+      <a href=""><img src="img/banner33.png" alt="Banner 3" /></a>
+      <a href=""><img src="img/banner44.png" alt="Banner 4" /></a>
+    </div><br>
+
+    <!-- SOCIAL -->
+    <div class="social-icons">
+      <a href=""><img src="img/instagram.png" alt="Instagram" /></a>
+      <a href=""><img src="img/whatsapp.png" alt="WhatsApp" /></a>
+    </div><br>
+
+    <!-- FOOTER -->
+    <footer>
+      © <span id="year">2025</span> Igreja Mavec. Todos os direitos reservados.
+    </footer><br>
+    <div class="credit-bar"><font color="white">
+      Desenvolvido por <a href="https://wa.me/557581973628" target="_blank" rel="noopener">FUTURA DESIGN</a></font>
+    </div>
+  </div>
+
+  <!-- SCRIPTS -->
+  <script>
+    // Quando toda a página (imagens incluídas) carregar:
+    window.addEventListener('load', () => {
+      const loader = document.getElementById('loader');
+      const FADE_START_TIME = 6000;
+
+      setTimeout(() => {
+        // Dispara o reveal suave do conteúdo
+        document.body.classList.add('revealing');
+
+        // Esconde o loader um pouco depois (para dar tempo do fade do conteúdo)
+        setTimeout(() => loader.classList.add('hidden'), 520);
+
+        // Inicializa o carrossel depois do reveal ter começado
+        setTimeout(() => { if (typeof initTopCarousel === 'function') initTopCarousel(); }, 80);
+      }, FADE_START_TIME);
+    });
+  </script>
+
+  <script>
+    document.addEventListener('DOMContentLoaded', () => {
+      const y = document.getElementById('year');
+      if (y) y.textContent = new Date().getFullYear();
+    });
+
+    /* ========== CARROSSEL COM LOOP ========== */
+    function initTopCarousel(){
+      const viewport = document.querySelector('.tc-viewport');
+      const track    = document.querySelector('.tc-track');
+      const slides   = Array.from(track.querySelectorAll('.tc-slide'));
+      const dots     = Array.from(document.querySelectorAll('.tc-dot'));
+      if(!track || !viewport || slides.length === 0) return;
+
+      // clones para loop
+      const firstClone = slides[0].cloneNode(true);
+      const lastClone  = slides[slides.length - 1].cloneNode(true);
+      track.prepend(lastClone);
+      track.appendChild(firstClone);
+
+      const realCount = slides.length;
+      let idx = 1;
+      const DURATION = 450;
+      const INTERVAL = 3000;
+
+      const setX  = () => { track.style.transform = `translateX(-${idx * 100}%)`; };
+      const goTo  = (i) => { track.style.transition = `transform ${DURATION}ms ease`; idx = i; setX(); };
+      const noAnim= (i) => { track.style.transition = 'none'; idx = i; setX(); };
+
+      noAnim(idx);
+
+      track.addEventListener('transitionend', () => {
+        if(idx === 0) noAnim(realCount);
+        if(idx === realCount + 1) noAnim(1);
+        updateDots();
+      });
+
+      let timer = setInterval(() => goTo(idx + 1), INTERVAL);
+      const restart = () => { clearInterval(timer); timer = setInterval(() => goTo(idx + 1), INTERVAL); };
+
+      const prev = document.querySelector('.tc-prev');
+      const next = document.querySelector('.tc-next');
+      prev && prev.addEventListener('click', () => { goTo(idx - 1); restart(); });
+      next && next.addEventListener('click', () => { goTo(idx + 1); restart(); });
+
+      function updateDots(){
+        let realIndex = idx;
+        if(idx === 0) realIndex = realCount;
+        if(idx === realCount + 1) realIndex = 1;
+        dots.forEach((d,i)=> d.classList.toggle('active', i+1 === realIndex));
+      }
+
+      dots.forEach((d,i)=> d.addEventListener('click', ()=>{ goTo(i+1); restart(); }));
+      updateDots();
+    }
+  </script>
+
+  <script>
+    // clique dos banners (efeito visual, sem navegação)
+    document.querySelectorAll('.banners a').forEach(link => {
+      link.addEventListener('click', e => {
+        e.preventDefault();
+        const img = link.querySelector('img');
+        if (!img) return;
+        img.classList.remove('click-anim');
+        void img.offsetWidth; // força reflow para reiniciar a animação
+        img.classList.add('click-anim');
+        setTimeout(() => { img.classList.remove('click-anim'); }, 600);
+      });
+    });
+  </script>
+</body>
+</html>
