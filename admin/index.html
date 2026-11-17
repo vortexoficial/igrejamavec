@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
   <meta name="robots" content="noindex, nofollow" />
-  <meta name="theme-color" content="#141414" />
+  <meta name="theme-color" content="#121212" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
@@ -16,7 +16,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="painel.css?v=1" />
+  <link rel="stylesheet" href="painel.css?v=2" />
 </head>
 <body>
 
@@ -25,7 +25,7 @@
     <form class="entrar-card" id="formEntrar" autocomplete="on">
       <img src="../img/logo.png" alt="Mavec" class="entrar-logo" />
       <h1>Painel da página</h1>
-      <p class="entrar-sub">Atualize banners, links e redes da página da igreja.</p>
+      <p class="entrar-sub">Atualize banners, vídeos, textos e redes da página da igreja.</p>
 
       <label class="campo">
         <span>Usuário</span>
@@ -56,7 +56,7 @@
 
     <nav class="abas" id="abas">
       <button class="aba ativa" data-aba="carrossel"><i data-lucide="gallery-horizontal-end"></i><span>Carrossel</span></button>
-      <button class="aba" data-aba="banners"><i data-lucide="layout-list"></i><span>Banners</span></button>
+      <button class="aba" data-aba="banners"><i data-lucide="layout-list"></i><span>Conteúdo</span></button>
       <button class="aba" data-aba="redes"><i data-lucide="share-2"></i><span>Redes</span></button>
     </nav>
 
@@ -66,19 +66,26 @@
       <section class="painel" data-painel="carrossel" hidden>
         <div class="painel-cab">
           <h2>Carrossel do topo</h2>
-          <p>Banners que passam sozinhos no alto da página. Tamanho ideal: <b>1920 x 1020 px</b>.</p>
+          <p>Banners que passam sozinhos no alto da página. Tamanho de cada imagem: <b>1920 x 900 px</b>. Deixe textos e rostos no centro, porque no celular as laterais são cortadas.</p>
         </div>
         <div class="lista" id="listaCarrossel"></div>
-        <button class="btn btn-adicionar" data-adicionar="carrossel"><i data-lucide="image-plus"></i>Adicionar banner ao carrossel</button>
+        <div class="adicionar-linha">
+          <button class="btn btn-adicionar" data-adicionar="carrossel" data-tipo="banner"><i data-lucide="image-plus"></i>Adicionar banner ao carrossel</button>
+        </div>
       </section>
 
       <section class="painel" data-painel="banners" hidden>
         <div class="painel-cab">
-          <h2>Banners de acesso</h2>
-          <p>Os botões grandes da página, na ordem em que aparecem. Tamanho ideal: <b>1017 x 453 px</b>.</p>
+          <h2>Conteúdo da página</h2>
+          <p>Tudo o que aparece abaixo da logo, na ordem da página: banners, vídeos do YouTube e blocos de foto e texto.</p>
         </div>
         <div class="lista" id="listaBanners"></div>
-        <button class="btn btn-adicionar" data-adicionar="banners"><i data-lucide="image-plus"></i>Adicionar banner</button>
+        <p class="adicionar-titulo">Adicionar</p>
+        <div class="adicionar-linha tres">
+          <button class="btn btn-adicionar" data-adicionar="banners" data-tipo="banner"><i data-lucide="image-plus"></i>Banner</button>
+          <button class="btn btn-adicionar" data-adicionar="banners" data-tipo="video"><i data-lucide="youtube"></i>Vídeo do YouTube</button>
+          <button class="btn btn-adicionar" data-adicionar="banners" data-tipo="texto"><i data-lucide="file-text"></i>Foto + texto</button>
+        </div>
       </section>
 
       <section class="painel" data-painel="redes" hidden>
@@ -108,39 +115,10 @@
     </div>
   </div>
 
-  <template id="modeloItem">
-    <article class="cartao item">
-      <div class="item-imagem">
-        <img alt="" />
-        <span class="selo-oculto"><i data-lucide="eye-off"></i>Oculto</span>
-        <button class="btn-trocar" type="button"><i data-lucide="image-up"></i>Trocar imagem</button>
-      </div>
-      <div class="item-corpo">
-        <label class="campo">
-          <span>Nome</span>
-          <input type="text" class="f-titulo" maxlength="80" placeholder="Ex.: Culto ao vivo" />
-        </label>
-        <label class="campo">
-          <span>Link ao tocar</span>
-          <input type="url" class="f-link" placeholder="https://..." autocapitalize="none" spellcheck="false" inputmode="url" />
-          <small class="dica"></small>
-        </label>
-        <div class="item-acoes">
-          <button type="button" class="chave" role="switch" aria-checked="true"><span class="chave-bola"></span><span class="chave-txt">Visível</span></button>
-          <div class="item-ordem">
-            <button type="button" class="btn-icone b-subir" aria-label="Subir"><i data-lucide="arrow-up"></i></button>
-            <button type="button" class="btn-icone b-descer" aria-label="Descer"><i data-lucide="arrow-down"></i></button>
-            <button type="button" class="btn-icone b-excluir" aria-label="Excluir"><i data-lucide="trash-2"></i></button>
-          </div>
-        </div>
-      </div>
-    </article>
-  </template>
-
   <input type="file" id="arquivo" accept="image/*" hidden />
   <div class="aviso" id="aviso" role="status" aria-live="polite"></div>
 
   <script src="https://unpkg.com/lucide@0.460.0/dist/umd/lucide.min.js"></script>
-  <script src="painel.js?v=1"></script>
+  <script src="painel.js?v=2"></script>
 </body>
 </html>

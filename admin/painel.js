@@ -1,4 +1,4 @@
-/* Painel Mavec: edita o dados.json da página (carrossel, banners e redes). */
+/* Painel Mavec: edita o dados.json da página (carrossel, conteúdo e redes). */
 (() => {
   'use strict';
 
@@ -6,7 +6,18 @@
     ? (new URLSearchParams(location.search).get('api') || 'http://localhost:8797')
     : 'https://mavec-painel.indesignleandro.workers.dev';
   const CHAVE_TOKEN = 'mavec-painel-token';
-  const LARGURA_MAX = { carrossel: 1920, banners: 1600 };
+
+  // Tamanho de cada tipo de imagem (o painel mostra em cada cartão e confere a proporção ao enviar)
+  const TAMANHOS = {
+    carrossel: { w: 1920, h: 900, max: 1920, rotulo: '1920 x 900 px', corta: true },
+    banner: { w: 1017, h: 453, max: 1600, rotulo: '1017 x 453 px', corta: false },
+    texto: { w: 1200, h: 800, max: 1400, rotulo: '1200 x 800 px', corta: false },
+  };
+  const TIPOS = {
+    banner: { nome: 'Banner', icone: 'image' },
+    video: { nome: 'Vídeo', icone: 'youtube' },
+    texto: { nome: 'Foto + texto', icone: 'file-text' },
+  };
 
   const $ = (s, el = document) => el.querySelector(s);
   const $$ = (s, el = document) => Array.from(el.querySelectorAll(s));
@@ -78,17 +89,15 @@
     dados = null;
     mostrarEntrar();
   }
+  let saidaPedida = 0;
   $('#btnSair').addEventListener('click', () => {
-    if (temMudanca() && !confirmarSaida()) return;
+    if (temMudanca() && Date.now() - saidaPedida > 4000){
+      saidaPedida = Date.now();
+      aviso('Há alterações não publicadas. Toque em Sair de novo para sair sem publicar.', true);
+      return;
+    }
     sair();
   });
-  let saidaPedida = 0;
-  function confirmarSaida(){
-    if (Date.now() - saidaPedida < 4000) return true;
-    saidaPedida = Date.now();
-    aviso('Há alterações não publicadas. Toque em Sair de novo para sair sem publicar.', true);
-    return false;
-  }
 
   /* ---------------- App ---------------- */
   async function abrirApp(){
@@ -108,8 +117,8 @@
 
   function carregar(d, v){
     dados = {
-      carrossel: Array.isArray(d.carrossel) ? d.carrossel : [],
-      banners: Array.isArray(d.banners) ? d.banners : [],
+      carrossel: (Array.isArray(d.carrossel) ? d.carrossel : []).map((i) => ({ ...i, tipo: 'banner' })),
+      banners: (Array.isArray(d.banners) ? d.banners : []).map((i) => ({ ...i, tipo: TIPOS[i.tipo] ? i.tipo : 'banner' })),
       instagram: d.instagram || '',
       whatsapp: d.whatsapp || '',
     };
@@ -129,9 +138,11 @@
   $$('.aba').forEach((b) => b.addEventListener('click', () => trocarAba(b.dataset.aba)));
 
   /* ---------------- Render ---------------- */
+  const caixa = (lista) => (lista === 'carrossel' ? $('#listaCarrossel') : $('#listaBanners'));
+
   function render(){
-    renderLista('carrossel', $('#listaCarrossel'));
-    renderLista('banners', $('#listaBanners'));
+    renderLista('carrossel');
+    renderLista('banners');
     $('#instagram').value = dados.instagram;
     $('#whatsapp').value = whatsParaTexto(dados.whatsapp);
     dicaRede('instagram'); dicaRede('whatsapp');
@@ -139,121 +150,244 @@
     atualizarBarra();
   }
 
-  function srcImagem(caminho){
-    return previas[caminho] || '../' + caminho;
-  }
+  function srcImagem(caminho){ return previas[caminho] || '../' + caminho; }
+  function tamanhoDe(lista, item){ return lista === 'carrossel' ? TAMANHOS.carrossel : TAMANHOS[item.tipo]; }
 
-  function renderLista(tipo, box, novoIndice = -1){
-    const lista = dados[tipo];
+  function renderLista(lista, novoIndice = -1){
+    const box = caixa(lista);
+    const itens = dados[lista];
     box.innerHTML = '';
-    if (!lista.length){
-      box.innerHTML = '<div class="cartao vazio">Nenhum banner. Toque em adicionar para colocar o primeiro.</div>';
+    if (!itens.length){
+      box.innerHTML = '<div class="cartao vazio">Nada aqui ainda. Use os botões abaixo para adicionar.</div>';
       return;
     }
-    lista.forEach((item, i) => {
-      const el = $('#modeloItem').content.firstElementChild.cloneNode(true);
-      if (i === novoIndice) el.classList.add('novo');
-      el.classList.toggle('oculto', item.ativo === false);
-      const img = $('img', el);
-      img.src = srcImagem(item.imagem);
-      img.alt = item.titulo || '';
+    itens.forEach((item, i) => box.appendChild(montarCartao(lista, item, i, i === novoIndice)));
+    icones();
+  }
 
-      const fTitulo = $('.f-titulo', el), fLink = $('.f-link', el), dica = $('.dica', el);
+  function h(tag, attrs = {}, filhos = []){
+    const el = document.createElement(tag);
+    for (const [k, v] of Object.entries(attrs)){
+      if (k === 'class') el.className = v;
+      else if (k === 'text') el.textContent = v;
+      else if (k === 'html') el.innerHTML = v;
+      else el.setAttribute(k, v);
+    }
+    (Array.isArray(filhos) ? filhos : [filhos]).forEach((f) => f && el.appendChild(f));
+    return el;
+  }
+
+  function campo(rotulo, input, dica){
+    return h('label', { class: 'campo' }, [h('span', { text: rotulo }), input, dica]);
+  }
+
+  function montarCartao(lista, item, i, novo){
+    const itens = dados[lista];
+    const tipo = item.tipo || 'banner';
+    const el = h('article', { class: 'cartao item tipo-' + tipo + (novo ? ' novo' : '') + (item.ativo === false ? ' oculto' : '') });
+
+    /* --- área de prévia --- */
+    const previa = h('div', { class: 'item-imagem' });
+    const cab = h('div', { class: 'item-cab' }, [
+      h('span', { class: 'item-tipo', html: `<i data-lucide="${TIPOS[tipo].icone}"></i>${lista === 'carrossel' ? 'Carrossel' : TIPOS[tipo].nome}` }),
+      h('span', { class: 'selo-oculto', html: '<i data-lucide="eye-off"></i>Oculto' }),
+    ]);
+    previa.appendChild(cab);
+
+    if (tipo === 'video'){
+      const id = idYoutube(item.video);
+      previa.appendChild(id
+        ? h('div', { class: 'video-previa' }, [h('img', { src: `https://i.ytimg.com/vi/${id}/hqdefault.jpg`, alt: '' }), h('span', { class: 'video-play', html: '<i data-lucide="play"></i>' })])
+        : h('div', { class: 'previa-vazia', html: '<i data-lucide="youtube"></i><span>Cole abaixo o link do vídeo</span>' }));
+    } else if (item.imagem){
+      previa.appendChild(h('img', { src: srcImagem(item.imagem), alt: item.titulo || '' }));
+    } else {
+      previa.appendChild(h('div', { class: 'previa-vazia', html: '<i data-lucide="image"></i><span>Sem foto (opcional)</span>' }));
+    }
+
+    if (tipo !== 'video'){
+      const tam = tamanhoDe(lista, item);
+      const acoesImg = h('div', { class: 'item-img-acoes' });
+      const trocar = h('button', { type: 'button', class: 'btn-trocar', html: `<i data-lucide="image-up"></i>${item.imagem ? 'Trocar imagem' : 'Adicionar foto'}` });
+      trocar.addEventListener('click', () => escolherImagem(lista, i, tipo));
+      acoesImg.appendChild(h('span', { class: 'item-tamanho', html: `<i data-lucide="ruler"></i>Tamanho: <b>${tam.rotulo}</b>` }));
+      acoesImg.appendChild(trocar);
+      if (tipo === 'texto' && item.imagem){
+        const tirar = h('button', { type: 'button', class: 'btn-trocar', html: '<i data-lucide="image-off"></i>Tirar' });
+        tirar.addEventListener('click', () => { item.imagem = ''; renderLista(lista); atualizarBarra(); });
+        acoesImg.appendChild(tirar);
+      }
+      previa.appendChild(acoesImg);
+    }
+    el.appendChild(previa);
+
+    /* --- campos --- */
+    const corpo = h('div', { class: 'item-corpo' });
+    const ligar = (input, chave, depois) => input.addEventListener('input', () => { item[chave] = input.value; depois && depois(); atualizarBarra(); });
+
+    if (tipo === 'video'){
+      const fTitulo = h('input', { type: 'text', maxlength: '80', placeholder: 'Ex.: Culto de domingo (opcional)' });
       fTitulo.value = item.titulo || '';
-      fLink.value = item.link || '';
-      mostrarDicaLink(fLink.value, dica);
-
-      fTitulo.addEventListener('input', () => { item.titulo = fTitulo.value; atualizarBarra(); });
-      fLink.addEventListener('input', () => { item.link = fLink.value.trim(); mostrarDicaLink(fLink.value, dica); atualizarBarra(); });
-      fLink.addEventListener('blur', () => {
-        const n = normalizarLink(fLink.value);
-        fLink.value = n; item.link = n; mostrarDicaLink(n, dica); atualizarBarra();
+      ligar(fTitulo, 'titulo');
+      const fVideo = h('input', { type: 'url', placeholder: 'https://youtube.com/watch?v=...', autocapitalize: 'none', spellcheck: 'false', inputmode: 'url' });
+      fVideo.value = item.video || '';
+      const dica = h('small', { class: 'dica' });
+      const mostrar = () => {
+        const id = idYoutube(fVideo.value);
+        dica.className = 'dica ' + (fVideo.value && !id ? 'ruim' : id ? 'ok' : '');
+        dica.textContent = !fVideo.value ? 'Abra o vídeo no YouTube, toque em Compartilhar, copie o link e cole aqui.' : id ? 'Vídeo encontrado.' : 'Esse link não é de um vídeo. Copie o link do vídeo (não do canal).';
+      };
+      mostrar();
+      fVideo.addEventListener('input', () => { item.video = fVideo.value.trim(); mostrar(); atualizarBarra(); });
+      fVideo.addEventListener('change', () => renderLista(lista));
+      corpo.append(campo('Título acima do vídeo', fTitulo), campo('Link do vídeo no YouTube', fVideo, dica));
+    } else if (tipo === 'texto'){
+      const fTitulo = h('input', { type: 'text', maxlength: '120', placeholder: 'Ex.: Encontro de casais' });
+      fTitulo.value = item.titulo || '';
+      ligar(fTitulo, 'titulo');
+      const fTexto = h('textarea', { rows: '4', maxlength: '1500', placeholder: 'Escreva o texto do bloco' });
+      fTexto.value = item.texto || '';
+      ligar(fTexto, 'texto');
+      const seg = h('div', { class: 'segmento', role: 'radiogroup' });
+      [['acima', 'Foto em cima'], ['lado', 'Foto ao lado']].forEach(([v, r]) => {
+        const b = h('button', { type: 'button', role: 'radio', 'aria-checked': String((item.layout || 'acima') === v), text: r });
+        b.addEventListener('click', () => { item.layout = v; $$('button', seg).forEach((x) => x.setAttribute('aria-checked', String(x === b))); atualizarBarra(); });
+        seg.appendChild(b);
       });
+      const fBotao = h('input', { type: 'text', maxlength: '40', placeholder: 'Ex.: Quero participar (opcional)' });
+      fBotao.value = item.botao || '';
+      ligar(fBotao, 'botao');
+      const [fLink, dicaLink] = campoLink(item);
+      corpo.append(
+        campo('Título', fTitulo),
+        campo('Texto', fTexto),
+        h('div', { class: 'campo' }, [h('span', { text: 'Posição da foto (no computador)' }), seg]),
+        h('div', { class: 'grade-2' }, [campo('Texto do botão', fBotao), campo('Link do botão', fLink, dicaLink)]),
+      );
+    } else {
+      const fTitulo = h('input', { type: 'text', maxlength: '80', placeholder: 'Ex.: Culto ao vivo' });
+      fTitulo.value = item.titulo || '';
+      ligar(fTitulo, 'titulo');
+      const [fLink, dicaLink] = campoLink(item);
+      corpo.append(campo('Nome', fTitulo), campo('Link ao tocar', fLink, dicaLink));
+    }
 
-      const chave = $('.chave', el);
-      chave.setAttribute('aria-checked', String(item.ativo !== false));
-      $('.chave-txt', el).textContent = item.ativo !== false ? 'Visível' : 'Oculto';
-      chave.addEventListener('click', () => {
-        item.ativo = item.ativo === false;
-        chave.setAttribute('aria-checked', String(item.ativo));
-        $('.chave-txt', el).textContent = item.ativo ? 'Visível' : 'Oculto';
-        el.classList.toggle('oculto', !item.ativo);
-        atualizarBarra();
-      });
-
-      const subir = $('.b-subir', el), descer = $('.b-descer', el);
-      subir.disabled = i === 0;
-      descer.disabled = i === lista.length - 1;
-      subir.addEventListener('click', () => mover(tipo, i, -1));
-      descer.addEventListener('click', () => mover(tipo, i, 1));
-
-      const excluir = $('.b-excluir', el);
-      let armado = 0;
-      excluir.addEventListener('click', () => {
-        if (Date.now() - armado < 3500){
-          lista.splice(i, 1);
-          renderLista(tipo, box); icones(); atualizarBarra();
-          aviso('Banner removido. Publique para valer na página.');
-          return;
-        }
-        armado = Date.now();
-        excluir.classList.add('confirmar');
-        excluir.innerHTML = '<i data-lucide="trash-2"></i><span>Excluir?</span>';
-        icones();
-        setTimeout(() => {
-          if (!excluir.isConnected) return;
-          excluir.classList.remove('confirmar');
-          excluir.innerHTML = '<i data-lucide="trash-2"></i>';
-          icones();
-        }, 3500);
-      });
-
-      $('.btn-trocar', el).addEventListener('click', () => escolherImagem(tipo, i));
-      box.appendChild(el);
+    /* --- ações --- */
+    const chave = h('button', { type: 'button', class: 'chave', role: 'switch', 'aria-checked': String(item.ativo !== false), html: `<span class="chave-bola"></span><span class="chave-txt">${item.ativo !== false ? 'Visível' : 'Oculto'}</span>` });
+    chave.addEventListener('click', () => {
+      item.ativo = item.ativo === false;
+      chave.setAttribute('aria-checked', String(item.ativo));
+      $('.chave-txt', chave).textContent = item.ativo ? 'Visível' : 'Oculto';
+      el.classList.toggle('oculto', !item.ativo);
+      atualizarBarra();
     });
+    const subir = h('button', { type: 'button', class: 'btn-icone b-subir', 'aria-label': 'Subir', html: '<i data-lucide="arrow-up"></i>' });
+    const descer = h('button', { type: 'button', class: 'btn-icone b-descer', 'aria-label': 'Descer', html: '<i data-lucide="arrow-down"></i>' });
+    const excluir = h('button', { type: 'button', class: 'btn-icone b-excluir', 'aria-label': 'Excluir', html: '<i data-lucide="trash-2"></i>' });
+    if (i === 0) subir.disabled = true;
+    if (i === itens.length - 1) descer.disabled = true;
+    subir.addEventListener('click', () => mover(lista, i, -1));
+    descer.addEventListener('click', () => mover(lista, i, 1));
+    let armado = 0;
+    excluir.addEventListener('click', () => {
+      if (Date.now() - armado < 3500){
+        itens.splice(i, 1);
+        renderLista(lista); atualizarBarra();
+        aviso('Removido. Publique para valer na página.');
+        return;
+      }
+      armado = Date.now();
+      excluir.classList.add('confirmar');
+      excluir.innerHTML = '<i data-lucide="trash-2"></i><span>Excluir?</span>';
+      icones();
+      setTimeout(() => {
+        if (!excluir.isConnected) return;
+        excluir.classList.remove('confirmar');
+        excluir.innerHTML = '<i data-lucide="trash-2"></i>';
+        icones();
+      }, 3500);
+    });
+    corpo.appendChild(h('div', { class: 'item-acoes' }, [chave, h('div', { class: 'item-ordem' }, [subir, descer, excluir])]));
+    el.appendChild(corpo);
+    return el;
   }
 
-  function mover(tipo, i, passo){
-    const lista = dados[tipo];
-    const j = i + passo;
-    if (j < 0 || j >= lista.length) return;
-    [lista[i], lista[j]] = [lista[j], lista[i]];
-    renderLista(tipo, tipo === 'carrossel' ? $('#listaCarrossel') : $('#listaBanners'));
-    icones(); atualizarBarra();
+  function campoLink(item){
+    const fLink = h('input', { type: 'url', placeholder: 'https://...', autocapitalize: 'none', spellcheck: 'false', inputmode: 'url' });
+    fLink.value = item.link || '';
+    const dica = h('small', { class: 'dica' });
+    mostrarDicaLink(fLink.value, dica, item.tipo === 'texto');
+    fLink.addEventListener('input', () => { item.link = fLink.value.trim(); mostrarDicaLink(fLink.value, dica, item.tipo === 'texto'); atualizarBarra(); });
+    fLink.addEventListener('blur', () => {
+      const n = normalizarLink(fLink.value);
+      fLink.value = n; item.link = n; mostrarDicaLink(n, dica, item.tipo === 'texto'); atualizarBarra();
+    });
+    return [fLink, dica];
   }
+
+  function mover(lista, i, passo){
+    const itens = dados[lista];
+    const j = i + passo;
+    if (j < 0 || j >= itens.length) return;
+    [itens[i], itens[j]] = [itens[j], itens[i]];
+    renderLista(lista); atualizarBarra();
+  }
+
+  /* ---------------- Adicionar ---------------- */
+  $$('[data-adicionar]').forEach((b) => b.addEventListener('click', () => {
+    const lista = b.dataset.adicionar, tipo = b.dataset.tipo;
+    if (tipo === 'video' || tipo === 'texto'){
+      dados[lista].push(tipo === 'video' ? { tipo, titulo: '', video: '', ativo: true } : { tipo, titulo: '', texto: '', imagem: '', layout: 'acima', botao: '', link: '', ativo: true });
+      renderLista(lista, dados[lista].length - 1); atualizarBarra();
+      const box = caixa(lista);
+      setTimeout(() => {
+        box.lastElementChild.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        const primeiro = $(tipo === 'video' ? 'input[type="url"]' : 'input', box.lastElementChild);
+        primeiro && primeiro.focus({ preventScroll: true });
+      }, 60);
+      return;
+    }
+    escolherImagem(lista, -1, 'banner');
+  }));
 
   /* ---------------- Imagens ---------------- */
   let escolha = null;
-  function escolherImagem(tipo, indice){
-    escolha = { tipo, indice };
+  function escolherImagem(lista, indice, tipo){
+    escolha = { lista, indice, tipo };
     const inp = $('#arquivo');
     inp.value = '';
     inp.click();
   }
-  $$('[data-adicionar]').forEach((b) => b.addEventListener('click', () => escolherImagem(b.dataset.adicionar, -1)));
 
   $('#arquivo').addEventListener('change', async (e) => {
     const arq = e.target.files && e.target.files[0];
     if (!arq || !escolha) return;
-    const { tipo, indice } = escolha;
+    const { lista, indice, tipo } = escolha;
+    const tam = lista === 'carrossel' ? TAMANHOS.carrossel : TAMANHOS[tipo];
     try {
       aviso('Preparando a imagem...');
-      const dataUrl = await converterImagem(arq, LARGURA_MAX[tipo]);
-      const caminho = `img/painel/${tipo}-${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}.webp`;
+      const { dataUrl, w, h: alt } = await converterImagem(arq, tam.max);
+      const caminho = `img/painel/${lista === 'carrossel' ? 'carrossel' : tipo}-${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}.webp`;
       novasImagens[caminho] = dataUrl;
       previas[caminho] = dataUrl;
-      const lista = dados[tipo];
+      const itens = dados[lista];
       if (indice === -1){
         const nome = arq.name.replace(/\.[^.]+$/, '').replace(/[-_]+/g, ' ').slice(0, 60);
-        lista.push({ titulo: nome, imagem: caminho, link: '', ativo: true });
+        itens.push({ tipo: 'banner', titulo: nome, imagem: caminho, link: '', ativo: true });
       } else {
-        lista[indice].imagem = caminho;
+        itens[indice].imagem = caminho;
       }
-      const box = tipo === 'carrossel' ? $('#listaCarrossel') : $('#listaBanners');
-      renderLista(tipo, box, indice === -1 ? lista.length - 1 : indice);
-      icones(); atualizarBarra();
-      aviso('Imagem pronta. Toque em Publicar para colocar na página.');
-      if (indice === -1) setTimeout(() => box.lastElementChild && box.lastElementChild.scrollIntoView({ behavior: 'smooth', block: 'center' }), 60);
+      renderLista(lista, indice === -1 ? itens.length - 1 : indice);
+      atualizarBarra();
+      const diferenca = Math.abs(w / alt - tam.w / tam.h) / (tam.w / tam.h);
+      if (diferenca > 0.08){
+        aviso(tam.corta
+          ? `Essa imagem tem ${w} x ${alt} px. O ideal é ${tam.rotulo}: as bordas vão ser cortadas na página.`
+          : `Essa imagem tem ${w} x ${alt} px. O ideal é ${tam.rotulo} para ficar igual aos outros.`, true);
+      } else {
+        aviso('Imagem pronta. Toque em Publicar para colocar na página.');
+      }
+      if (indice === -1){ const box = caixa(lista); setTimeout(() => box.lastElementChild && box.lastElementChild.scrollIntoView({ behavior: 'smooth', block: 'center' }), 60); }
     } catch (err){
       aviso(err.message || 'Não foi possível abrir essa imagem.', true);
     }
@@ -267,14 +401,14 @@
       img.onload = () => {
         URL.revokeObjectURL(url);
         const escala = Math.min(1, larguraMax / img.naturalWidth);
-        const w = Math.round(img.naturalWidth * escala), h = Math.round(img.naturalHeight * escala);
+        const w = Math.round(img.naturalWidth * escala), hh = Math.round(img.naturalHeight * escala);
         const c = document.createElement('canvas');
-        c.width = w; c.height = h;
-        c.getContext('2d').drawImage(img, 0, 0, w, h);
+        c.width = w; c.height = hh;
+        c.getContext('2d').drawImage(img, 0, 0, w, hh);
         let q = 0.88, out = c.toDataURL('image/webp', q);
         if (!out.startsWith('data:image/webp')) out = c.toDataURL('image/jpeg', q); // navegador sem WebP
         while (out.length * 0.75 > 2.6 * 1024 * 1024 && q > 0.5){ q -= 0.1; out = c.toDataURL('image/webp', q); }
-        ok(out);
+        ok({ dataUrl: out, w: img.naturalWidth, h: img.naturalHeight });
       };
       img.onerror = () => { URL.revokeObjectURL(url); falha(new Error('Não foi possível abrir essa imagem.')); };
       img.src = url;
@@ -282,6 +416,10 @@
   }
 
   /* ---------------- Links ---------------- */
+  function idYoutube(u){
+    const m = String(u || '').match(/(?:youtube\.com\/(?:watch\?(?:.*&)?v=|embed\/|shorts\/|live\/)|youtu\.be\/)([\w-]{11})/);
+    return m ? m[1] : '';
+  }
   function normalizarLink(v){
     v = String(v || '').trim();
     if (!v) return '';
@@ -292,10 +430,10 @@
     if (/^[\w-]+(\.[\w-]+)+(\/.*)?$/.test(v)) return 'https://' + v;
     return v;
   }
-  function mostrarDicaLink(v, el){
+  function mostrarDicaLink(v, el, botao){
     v = String(v || '').trim();
     el.className = 'dica';
-    if (!v){ el.textContent = 'Sem link: o banner aparece, mas não abre nada.'; return; }
+    if (!v){ el.textContent = botao ? 'Sem link, o botão não aparece.' : 'Sem link: o banner aparece, mas não abre nada.'; return; }
     const n = normalizarLink(v);
     if (/^(https?:\/\/|mailto:|tel:)/i.test(n)){ el.textContent = n === v ? '' : 'Vai abrir: ' + n; el.classList.add('ok'); }
     else { el.textContent = 'Link incompleto. Cole o endereço inteiro, começando com https://'; el.classList.add('ruim'); }
@@ -344,24 +482,35 @@
     aviso('Alterações desfeitas.');
   });
 
-  $('#btnPublicar').addEventListener('click', async () => {
-    const todos = [...dados.carrossel, ...dados.banners];
-    const ruim = todos.find((i) => i.link && !/^(https?:\/\/|mailto:|tel:)/i.test(normalizarLink(i.link)));
-    if (ruim){ aviso(`O link de "${ruim.titulo || 'um banner'}" está incompleto.`, true); return; }
-    todos.forEach((i) => (i.link = normalizarLink(i.link)));
-    for (const r of ['instagram', 'whatsapp']){
-      if (dados[r] && !/^https?:\/\//.test(dados[r])){ trocarAba('redes'); aviso('Confira o ' + (r === 'instagram' ? 'Instagram' : 'WhatsApp') + '.', true); return; }
+  function problema(){
+    for (const [lista, itens] of [['carrossel', dados.carrossel], ['banners', dados.banners]]){
+      for (const it of itens){
+        const nome = it.titulo || TIPOS[it.tipo].nome.toLowerCase();
+        if (it.link && !/^(https?:\/\/|mailto:|tel:)/i.test(normalizarLink(it.link))) return [lista, `O link de "${nome}" está incompleto.`];
+        if (it.tipo === 'video' && !idYoutube(it.video)) return [lista, 'Um vídeo está sem link do YouTube válido.'];
+        if (it.tipo === 'texto' && !it.titulo && !it.texto && !it.imagem) return [lista, 'Um bloco de foto + texto está vazio.'];
+      }
     }
+    for (const r of ['instagram', 'whatsapp']){
+      if (dados[r] && !/^https?:\/\//.test(dados[r])) return ['redes', 'Confira o ' + (r === 'instagram' ? 'Instagram' : 'WhatsApp') + '.'];
+    }
+    return null;
+  }
 
-    const usadas = new Set(todos.map((i) => i.imagem));
+  $('#btnPublicar').addEventListener('click', async () => {
+    const p = problema();
+    if (p){ trocarAba(p[0]); aviso(p[1], true); return; }
+    const todos = [...dados.carrossel, ...dados.banners];
+    todos.forEach((i) => { if (i.link) i.link = normalizarLink(i.link); });
+
+    const usadas = new Set(todos.map((i) => i.imagem).filter(Boolean));
     const imagens = Object.entries(novasImagens).filter(([c]) => usadas.has(c)).map(([caminho, base64]) => ({ caminho, base64 }));
     const btn = $('#btnPublicar');
     btn.disabled = true;
     btn.innerHTML = '<span class="giro"></span><span>Publicando</span>';
     try {
       const r = await api('/api/publicar', { method: 'POST', body: JSON.stringify({ dados, imagens, versao }) });
-      // as prévias continuam em memória até a página atualizar
-      original = JSON.stringify(dados);
+      original = JSON.stringify(dados); // as prévias continuam em memória até a página atualizar
       versao = r.versao;
       novasImagens = {};
       render();
@@ -385,7 +534,7 @@
     el.classList.toggle('ruim', ruim);
     el.classList.add('ver');
     clearTimeout(tAviso);
-    tAviso = setTimeout(() => el.classList.remove('ver'), ruim ? 5000 : 3200);
+    tAviso = setTimeout(() => el.classList.remove('ver'), ruim ? 6000 : 3200);
   }
 
   function esc(s){ return String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c])); }
