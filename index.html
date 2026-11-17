@@ -189,6 +189,7 @@
       100%{ filter:brightness(1); transform:scale(1.04); }
     }
     .banners a img.click-anim{ animation:bannerClickFlash .6s ease forwards; }
+    .tc-unico .tc-nav, .tc-unico .tc-dots{ display:none; }
 
     /* Estilizando todos os <h3> (mantido do seu código) */
     h3 { font-weight:normal; }
@@ -214,7 +215,7 @@
   <!-- PÁGINA (fica renderizada por trás do loader) -->
   <div id="page">
     <!-- CARROSSEL -->
-    <section class="top-carousel">
+    <section class="top-carousel" id="carrossel">
       <div class="tc-viewport">
         <div class="tc-track">
           <a class="tc-slide" href="" target="_blank">
@@ -284,8 +285,12 @@
         // Esconde o loader um pouco depois (para dar tempo do fade do conteúdo)
         setTimeout(() => loader.classList.add('hidden'), 520);
 
-        // Inicializa o carrossel depois do reveal ter começado
-        setTimeout(() => { if (typeof initTopCarousel === 'function') initTopCarousel(); }, 80);
+        // Inicializa o carrossel depois do reveal ter começado (e depois de aplicar o dados.json do painel)
+        setTimeout(() => {
+          Promise.resolve(window.mavecPronto).then(() => {
+            if (typeof initTopCarousel === 'function') initTopCarousel();
+          });
+        }, 80);
       }, FADE_START_TIME);
     });
   </script>
@@ -300,6 +305,7 @@
     function initTopCarousel(){
       const viewport = document.querySelector('.tc-viewport');
       const track    = document.querySelector('.tc-track');
+      if(!track) return;
       const slides   = Array.from(track.querySelectorAll('.tc-slide'));
       const dots     = Array.from(document.querySelectorAll('.tc-dot'));
       if(!track || !viewport || slides.length === 0) return;
@@ -348,17 +354,82 @@
   </script>
 
   <script>
-    // clique dos banners (efeito visual, sem navegação)
-    document.querySelectorAll('.banners a').forEach(link => {
-      link.addEventListener('click', e => {
-        e.preventDefault();
-        const img = link.querySelector('img');
-        if (!img) return;
+    /* ========== CONTEÚDO DO PAINEL (dados.json) ========== */
+    window.mavecPronto = fetch('dados.json?v=' + Date.now(), { cache: 'no-store' })
+      .then(r => r.ok ? r.json() : null)
+      .then(d => { if (d) aplicarDados(d); })
+      .catch(() => {});
+
+    function linkSeguro(u){
+      u = String(u || '').trim();
+      return /^(https?:\/\/|mailto:|tel:)/i.test(u) ? u : '';
+    }
+
+    function montarLink(item, classe){
+      const a = document.createElement('a');
+      if (classe) a.className = classe;
+      const href = linkSeguro(item.link);
+      if (href){ a.href = href; a.target = '_blank'; a.rel = 'noopener'; }
+      const img = document.createElement('img');
+      img.src = item.imagem;
+      img.alt = item.titulo || '';
+      a.appendChild(img);
+      return a;
+    }
+
+    function aplicarDados(d){
+      const ativos = lista => (Array.isArray(lista) ? lista : []).filter(i => i && i.imagem && i.ativo !== false);
+
+      // Carrossel do topo
+      const slides = ativos(d.carrossel);
+      const sec = document.getElementById('carrossel');
+      if (sec){
+        if (!slides.length){ sec.remove(); }
+        else {
+          const track = sec.querySelector('.tc-track');
+          const dots  = sec.querySelector('.tc-dots');
+          track.innerHTML = ''; dots.innerHTML = '';
+          slides.forEach((s, i) => {
+            track.appendChild(montarLink(s, 'tc-slide'));
+            const b = document.createElement('button');
+            b.className = 'tc-dot' + (i === 0 ? ' active' : '');
+            b.setAttribute('aria-label', 'Banner ' + (i + 1));
+            dots.appendChild(b);
+          });
+          sec.classList.toggle('tc-unico', slides.length === 1);
+        }
+      }
+
+      // Banners
+      const box = document.querySelector('.banners');
+      if (box && Array.isArray(d.banners)){
+        box.innerHTML = '';
+        ativos(d.banners).forEach(b => box.appendChild(montarLink(b)));
+      }
+
+      // Redes
+      const redes = document.querySelectorAll('.social-icons a');
+      const insta = linkSeguro(d.instagram), zap = linkSeguro(d.whatsapp);
+      [[redes[0], insta], [redes[1], zap]].forEach(([a, href]) => {
+        if (!a || !href) return;
+        a.href = href; a.target = '_blank'; a.rel = 'noopener';
+      });
+    }
+
+    // clique dos banners: efeito visual e depois abre o link (se houver)
+    document.addEventListener('click', e => {
+      const link = e.target.closest('.banners a');
+      if (!link) return;
+      e.preventDefault();
+      const img = link.querySelector('img');
+      if (img){
         img.classList.remove('click-anim');
         void img.offsetWidth; // força reflow para reiniciar a animação
         img.classList.add('click-anim');
         setTimeout(() => { img.classList.remove('click-anim'); }, 600);
-      });
+      }
+      const href = link.getAttribute('href');
+      if (href) window.open(href, '_blank', 'noopener');
     });
   </script>
 </body>

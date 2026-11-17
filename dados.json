@@ -1,0 +1,16 @@
+{
+  "carrossel": [
+    { "titulo": "Banner do topo 1", "imagem": "img/bannertopo1.jpg", "link": "", "ativo": true },
+    { "titulo": "Banner do topo 2", "imagem": "img/bannertopo2.jpg", "link": "", "ativo": true },
+    { "titulo": "Banner do topo 3", "imagem": "img/bannertopo3.jpg", "link": "", "ativo": true }
+  ],
+  "banners": [
+    { "titulo": "Acesso Estacionamento", "imagem": "img/banner1.png", "link": "", "ativo": true },
+    { "titulo": "Acesso Frontal", "imagem": "img/banner22.png", "link": "", "ativo": true },
+    { "titulo": "Fale conosco", "imagem": "img/banner33.png", "link": "", "ativo": true },
+    { "titulo": "Culto ao vivo", "imagem": "img/banner44.png", "link": "", "ativo": true }
+  ],
+  "instagram": "",
+  "whatsapp": "",
+  "atualizado": ""
+}

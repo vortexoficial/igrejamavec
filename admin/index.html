@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="robots" content="noindex, nofollow" />
+  <meta name="theme-color" content="#141414" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="Painel Mavec" />
+  <title>Painel Mavec</title>
+  <link rel="manifest" href="manifest.webmanifest" />
+  <link rel="icon" href="icone-192.png" type="image/png" />
+  <link rel="apple-touch-icon" href="icone-192.png" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="painel.css?v=1" />
+</head>
+<body>
+
+  <!-- ENTRAR -->
+  <main class="entrar" id="telaEntrar" hidden>
+    <form class="entrar-card" id="formEntrar" autocomplete="on">
+      <img src="../img/logo.png" alt="Mavec" class="entrar-logo" />
+      <h1>Painel da página</h1>
+      <p class="entrar-sub">Atualize banners, links e redes da página da igreja.</p>
+
+      <label class="campo">
+        <span>Usuário</span>
+        <input type="text" id="usuario" name="username" autocomplete="username" autocapitalize="none" spellcheck="false" required />
+      </label>
+      <label class="campo">
+        <span>Senha</span>
+        <div class="campo-senha">
+          <input type="password" id="senha" name="password" autocomplete="current-password" required />
+          <button type="button" class="btn-icone" id="verSenha" aria-label="Mostrar senha"><i data-lucide="eye"></i></button>
+        </div>
+      </label>
+      <p class="erro" id="erroEntrar" role="alert"></p>
+      <button type="submit" class="btn btn-primario btn-largo" id="btnEntrar"><span>Entrar</span><i data-lucide="arrow-right"></i></button>
+    </form>
+  </main>
+
+  <!-- APP -->
+  <div class="app" id="telaApp" hidden>
+    <header class="topo">
+      <img src="../img/logo.png" alt="Mavec" class="topo-logo" />
+      <span class="topo-titulo">Painel</span>
+      <div class="topo-acoes">
+        <a class="btn-icone" href="../" target="_blank" rel="noopener" aria-label="Ver página"><i data-lucide="external-link"></i><span class="so-pc">Ver página</span></a>
+        <button class="btn-icone" id="btnSair" aria-label="Sair"><i data-lucide="log-out"></i><span class="so-pc">Sair</span></button>
+      </div>
+    </header>
+
+    <nav class="abas" id="abas">
+      <button class="aba ativa" data-aba="carrossel"><i data-lucide="gallery-horizontal-end"></i><span>Carrossel</span></button>
+      <button class="aba" data-aba="banners"><i data-lucide="layout-list"></i><span>Banners</span></button>
+      <button class="aba" data-aba="redes"><i data-lucide="share-2"></i><span>Redes</span></button>
+    </nav>
+
+    <main class="conteudo">
+      <div class="carregando" id="carregando"><span class="giro"></span>Carregando...</div>
+
+      <section class="painel" data-painel="carrossel" hidden>
+        <div class="painel-cab">
+          <h2>Carrossel do topo</h2>
+          <p>Banners que passam sozinhos no alto da página. Tamanho ideal: <b>1920 x 1020 px</b>.</p>
+        </div>
+        <div class="lista" id="listaCarrossel"></div>
+        <button class="btn btn-adicionar" data-adicionar="carrossel"><i data-lucide="image-plus"></i>Adicionar banner ao carrossel</button>
+      </section>
+
+      <section class="painel" data-painel="banners" hidden>
+        <div class="painel-cab">
+          <h2>Banners de acesso</h2>
+          <p>Os botões grandes da página, na ordem em que aparecem. Tamanho ideal: <b>1017 x 453 px</b>.</p>
+        </div>
+        <div class="lista" id="listaBanners"></div>
+        <button class="btn btn-adicionar" data-adicionar="banners"><i data-lucide="image-plus"></i>Adicionar banner</button>
+      </section>
+
+      <section class="painel" data-painel="redes" hidden>
+        <div class="painel-cab">
+          <h2>Redes sociais</h2>
+          <p>Ícones no fim da página.</p>
+        </div>
+        <div class="cartao cartao-form">
+          <label class="campo">
+            <span><i data-lucide="instagram"></i>Instagram</span>
+            <input type="text" id="instagram" placeholder="@perfil ou link do Instagram" autocapitalize="none" spellcheck="false" />
+            <small class="dica" data-dica="instagram"></small>
+          </label>
+          <label class="campo">
+            <span><i data-lucide="message-circle"></i>WhatsApp</span>
+            <input type="text" id="whatsapp" inputmode="tel" placeholder="Número com DDD, ex.: 75 99999-9999" />
+            <small class="dica" data-dica="whatsapp"></small>
+          </label>
+        </div>
+      </section>
+    </main>
+
+    <div class="barra-publicar" id="barraPublicar" hidden>
+      <div class="barra-texto"><i data-lucide="circle-dot"></i><span>Não publicado</span></div>
+      <button class="btn btn-fantasma" id="btnDescartar">Desfazer</button>
+      <button class="btn btn-primario" id="btnPublicar"><i data-lucide="cloud-upload"></i><span>Publicar</span></button>
+    </div>
+  </div>
+
+  <template id="modeloItem">
+    <article class="cartao item">
+      <div class="item-imagem">
+        <img alt="" />
+        <span class="selo-oculto"><i data-lucide="eye-off"></i>Oculto</span>
+        <button class="btn-trocar" type="button"><i data-lucide="image-up"></i>Trocar imagem</button>
+      </div>
+      <div class="item-corpo">
+        <label class="campo">
+          <span>Nome</span>
+          <input type="text" class="f-titulo" maxlength="80" placeholder="Ex.: Culto ao vivo" />
+        </label>
+        <label class="campo">
+          <span>Link ao tocar</span>
+          <input type="url" class="f-link" placeholder="https://..." autocapitalize="none" spellcheck="false" inputmode="url" />
+          <small class="dica"></small>
+        </label>
+        <div class="item-acoes">
+          <button type="button" class="chave" role="switch" aria-checked="true"><span class="chave-bola"></span><span class="chave-txt">Visível</span></button>
+          <div class="item-ordem">
+            <button type="button" class="btn-icone b-subir" aria-label="Subir"><i data-lucide="arrow-up"></i></button>
+            <button type="button" class="btn-icone b-descer" aria-label="Descer"><i data-lucide="arrow-down"></i></button>
+            <button type="button" class="btn-icone b-excluir" aria-label="Excluir"><i data-lucide="trash-2"></i></button>
+          </div>
+        </div>
+      </div>
+    </article>
+  </template>
+
+  <input type="file" id="arquivo" accept="image/*" hidden />
+  <div class="aviso" id="aviso" role="status" aria-live="polite"></div>
+
+  <script src="https://unpkg.com/lucide@0.460.0/dist/umd/lucide.min.js"></script>
+  <script src="painel.js?v=1"></script>
+</body>
+</html>
